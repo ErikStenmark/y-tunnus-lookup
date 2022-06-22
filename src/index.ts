@@ -1,9 +1,12 @@
-import fetch from 'node-fetch';
+import HttpClient from './http-client';
+import RphService from './rph-service';
 
 const fetchBusiness = async (businessId: string) => {
-    const response = await fetch(`https://avoindata.prh.fi/bis/v1/${businessId}`);
-    const data = await response.json();
-    return data;
+    const client = new HttpClient();
+    const rphService = new RphService(client);
+
+    const data = await rphService.getById(businessId);
+    console.log(data);
 }
 
 (async () => {
