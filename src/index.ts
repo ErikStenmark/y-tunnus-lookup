@@ -10,7 +10,7 @@ const fetchBusiness = async (businessId: string) => {
         const rphService = new RphService(client);
 
         const data = await rphService.getById(businessId);
-        console.log(data);
+        return data;
     }
 
 }

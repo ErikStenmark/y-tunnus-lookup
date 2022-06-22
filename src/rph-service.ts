@@ -2,7 +2,7 @@ import { IHttpClient } from './http-client';
 
 type Address = {
     street: string;
-    postCode: number;
+    postCode: string;
     city: string;
 }
 
@@ -11,12 +11,12 @@ type BusinessLine = {
     description: string;
 }
 
-type GetBusinessResponse = {
+type GetBusinessResponse = Partial<{
     name: string;
     website: string;
-    address: Address;
-    businessLine: BusinessLine;
-}
+    address: Partial<Address>;
+    businessLine: Partial<BusinessLine>;
+}>
 
 type ReturnData = {
     names: DataEntry[];
@@ -52,53 +52,110 @@ export default class RphService implements IRphService {
     public async getById(businessId: string): Promise<GetBusinessResponse> {
         const url = this.buildUrl(businessId);
         const { data } = await this.client.get<WrappedReturnData>(url);
-        const [result] = data.results;
 
-        return this.extractData(result);
+        if (!data) {
+            return {};
+        }
+
+        return this.extractData(data);
     }
 
     private buildUrl(businessId: string): string {
         return `${this.apiUrl}/${businessId}`;
     }
 
-    private extractData(data: ReturnData): GetBusinessResponse {
+    private extractData(data: WrappedReturnData): GetBusinessResponse {
+        const result: GetBusinessResponse = {}
+
+        if (!data.results.length) {
+            return result
+        };
+
+        const [firstEntry] = data.results;
+
         return {
-            name: this.extractName(data),
-            address: this.extractAddress(data),
-            businessLine: this.extractBusinessLine(data),
-            website: this.extractWebSite(data)
-        }
+            name: this.extractName(firstEntry),
+            address: this.extractAddress(firstEntry),
+            website: this.extractWebSite(firstEntry),
+            businessLine: this.extractBusinessLine(firstEntry)
+        };
     }
 
     private extractName(data: ReturnData): string {
+        if (!data.names?.length) {
+            return '';
+        }
+
         const [current] = this.getCurrent(data.names);
-        return current.name;
+
+        if (current) {
+            return current.name || '';
+        }
+
+        return data.names[0].name || '';
     }
 
-    private extractAddress(data: ReturnData): Address {
-        const [current] = this.getCurrent(data.addresses);
-        const { street, postCode, city } = current;
+    private extractAddress(data: ReturnData): Partial<Address> {
+        const result: Partial<Address> = {};
+
+        if (!data.addresses?.length) {
+            return result;
+        }
+
+        const current = this.getCurrent(data.addresses);
+
+        if (!current.length) {
+            return result;
+        }
+
+        const { street, postCode, city } = current[0];
+
         return {
-            street,
-            postCode,
-            city
+            street: street || '',
+            postCode: postCode || '',
+            city: city || ''
         }
     }
 
-    private extractBusinessLine(data: ReturnData, lang = 'EN'): BusinessLine {
+    private extractBusinessLine(data: ReturnData, lang = 'EN'): Partial<BusinessLine> {
+        const result: Partial<BusinessLine> = {}
+
+        if (!data.businessLines?.length) {
+            return result;
+        }
+
         const current = this.getCurrent(data.businessLines);
-        const byLang = this.getByLang(data.businessLines, lang);
-        const fallBack = !byLang.length ? current[0] : byLang[0];
+
+        if (!current.length) {
+            return result;
+        }
+
+        const [byLang] = this.getByLang(data.businessLines, lang);
+        const businessLine = !byLang ? current[0] : byLang;
 
         return {
-            code: fallBack.code,
-            description: fallBack.name
+            code: businessLine.code || '',
+            description: businessLine.name || ''
         }
     }
 
     private extractWebSite(data: ReturnData): string {
-        const [current] = this.getCurrent(data.contactDetails);
-        return current.value;
+        if (!data.contactDetails?.length) {
+            return '';
+        }
+
+        const sites = data.contactDetails.filter(entry => entry.type.includes('www' || 'Website'));
+        const current = this.getCurrent(sites);
+
+        if (current.length) {
+            return current[0].value || ''
+        };
+
+        if (sites.length) {
+            return sites[0].value || ''
+        }
+
+        return '';
     }
 
     private getCurrent(data: DataEntry[]) {
