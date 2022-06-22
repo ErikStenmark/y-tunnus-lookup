@@ -16,6 +16,10 @@ const fetchBusiness = async (businessId: string) => {
 }
 
 (async () => {
-    const data = await fetchBusiness('1080465-1');
-    console.log(data);
+    try {
+        const data = await fetchBusiness('1080465-1');
+        console.log(data);
+    } catch (e) {
+        console.log(e);
+    }
 })();

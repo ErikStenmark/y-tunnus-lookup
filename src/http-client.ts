@@ -14,12 +14,30 @@ export interface IHttpClient {
 export default class HttpClient implements IHttpClient {
     public async get<T = AnyObject>(url: string): Promise<HttpClientResponse<T>> {
         const response = await fetch(url);
-        const data = await response.json();
-        const statusCode = response.status;
 
-        return {
-            statusCode,
-            data
-        }
+        return new Promise(async (resolve, reject) => {
+            if (!response.ok) {
+                reject({
+                    status: response.status,
+                    response: response.statusText
+                })
+            }
+
+            let data = {} as T;
+
+            try {
+                data = await response.json();
+            } catch {
+                reject({
+                    status: response.status,
+                    response: 'unable to parse JSON response'
+                });
+            }
+
+            resolve({
+                statusCode: response.status,
+                data
+            });
+        });
     }
 }
