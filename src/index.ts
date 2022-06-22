@@ -1,12 +1,18 @@
 import HttpClient from './http-client';
 import RphService from './rph-service';
+import Validate from './validator';
 
 const fetchBusiness = async (businessId: string) => {
-    const client = new HttpClient();
-    const rphService = new RphService(client);
+    const validate = new Validate();
 
-    const data = await rphService.getById(businessId);
-    console.log(data);
+    if (validate.businessId(businessId)) {
+        const client = new HttpClient();
+        const rphService = new RphService(client);
+
+        const data = await rphService.getById(businessId);
+        console.log(data);
+    }
+
 }
 
 (async () => {
